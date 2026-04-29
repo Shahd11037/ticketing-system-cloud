@@ -1,8 +1,12 @@
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 import psycopg2
 import uvicorn
 
 app = FastAPI()
+
+#Initialize the instrumentator and "plug it into" your app
+Instrumentator().instrument(app).expose(app) #this is for monitoring
 
 DB_CONFIG = {
     "host": "db",

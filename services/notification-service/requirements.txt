@@ -2,4 +2,4 @@ pika
 fastapi
 uvicorn
 psycopg2-binary
-json
+prometheus-fastapi-instrumentator

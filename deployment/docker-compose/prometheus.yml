@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s # How often to ask for data
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:5000'] # Internal container name and port
+
+  - job_name: 'reporting-service'
+    static_configs:
+      - targets: ['reporting-service:5000']

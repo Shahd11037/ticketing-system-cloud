@@ -14,6 +14,52 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../../db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: ticketing_mq
+    restart: always
+    ports:
+      - "5672:5672"   # Main communication port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+  
+  notification-service:
+    build: ../../services/notification-service
+    container_name: notification_service
+    restart: always
+    ports:
+      - "5004:5000" # Map host 5004 to container 5000
+    depends_on:
+      - rabbitmq
+      - db
+
+  reporting-service:
+    build: ../../services/reporting-service
+    container_name: reporting_service
+    restart: always
+    ports:
+      - "5003:5000"
+    depends_on:
+      - db
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000" # Use 3001 because Frontend might use 3000
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:

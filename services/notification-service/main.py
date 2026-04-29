@@ -3,10 +3,14 @@ import pika
 import threading
 import psycopg2
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 import uvicorn
 import os
 
 app = FastAPI()
+
+#Initialize the instrumentator and "plug it into" your app
+Instrumentator().instrument(app).expose(app) #for monitoring 
 
 # Connection details (match your docker-compose.dev.yml)
 DB_CONFIG = {
