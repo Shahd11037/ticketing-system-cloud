@@ -1,7 +1,16 @@
 version: '3.8'
 
+# Define the logging template 
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
   db:
+    <<: *default-logging
     image: postgres:15-alpine
     container_name: ticketing_db
     restart: always
@@ -16,6 +25,7 @@ services:
       - ../../db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
   
   rabbitmq:
+    <<: *default-logging
     image: rabbitmq:3-management
     container_name: ticketing_mq
     restart: always
@@ -27,6 +37,7 @@ services:
       RABBITMQ_DEFAULT_PASS: guest
   
   notification-service:
+    <<: *default-logging
     build: ../../services/notification-service
     container_name: notification_service
     restart: always
@@ -37,6 +48,7 @@ services:
       - db
 
   reporting-service:
+    <<: *default-logging
     build: ../../services/reporting-service
     container_name: reporting_service
     restart: always
@@ -46,6 +58,7 @@ services:
       - db
 
   prometheus:
+    <<: *default-logging
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
@@ -54,6 +67,7 @@ services:
       - "9090:9090"
 
   grafana:
+    <<: *default-logging
     image: grafana/grafana:latest
     container_name: grafana
     ports:

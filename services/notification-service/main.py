@@ -1,20 +1,26 @@
 import json
+import logging
+import sys
 import pika
 import threading
 import psycopg2
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
 import uvicorn
-import os
 
 app = FastAPI()
+Instrumentator().instrument(app).expose(app)
 
-#Initialize the instrumentator and "plug it into" your app
-Instrumentator().instrument(app).expose(app) #for monitoring 
+# --- LOGGING CONFIGURATION ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger("NotificationService")
 
-# Connection details (match your docker-compose.dev.yml)
 DB_CONFIG = {
-    "host": "db", # The service name in docker-compose
+    "host": "db",
     "database": "ticketing_system",
     "user": "admin",
     "password": "password123"
@@ -23,60 +29,63 @@ DB_CONFIG = {
 def get_db_connection():
     return psycopg2.connect(**DB_CONFIG)
 
-# --- 1. THE "WRITE" (RabbitMQ Callback) ---
+# --- 1. RABBITMQ CONSUMER ---
 def start_rabbitmq_consumer():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
-    channel = connection.channel()
-    channel.queue_declare(queue='task_queue', durable=True)
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+        channel = connection.channel()
+        channel.queue_declare(queue='task_queue', durable=True)
+        logger.info("Successfully connected to RabbitMQ.")
+    except Exception as e:
+        logger.error("Failed to connect to RabbitMQ: %s", e)
+        return
 
     def callback(ch, method, properties, body):
-        # 1. Parse the JSON string into a Python Dictionary
-        data = json.loads(body.decode())
-        user_id = data.get("user_id")
-        message = data.get("message")
-        ticket_id = data.get("ticket_id")
+        try:
+            data = json.loads(body.decode())
+            user_id = data.get("user_id")
+            message = data.get("message")
+            
+            logger.info("Processing alert for User %s: %s", user_id, message)
 
-        print(f" [x] Processing alert for User {user_id}: {message}")
-
-        # --- DATABASE WRITE HAPPENS HERE ---
-        conn = get_db_connection()
-        cur = conn.cursor()
-        # Note: In a real app, you'd parse user_id from the JSON message
-        cur.execute(
-            "INSERT INTO notifications (user_id, message) VALUES (%s, %s)",
-            (user_id, message)
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO notifications (user_id, message) VALUES (%s, %s)",
+                (user_id, message)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+        except psycopg2.Error as e:
+            logger.error("Database error during RabbitMQ callback: %s", e)
+            # We don't ACK here so the message stays in RabbitMQ to try again later
+        except Exception as e:
+            logger.error("Unexpected error in callback: %s", e)
 
     channel.basic_consume(queue='task_queue', on_message_callback=callback)
     channel.start_consuming()
 
-# --- 2. THE "READ" (API Endpoint) ---
+# --- 2. API ENDPOINT ---
 @app.get("/notifications")
 def get_notifications():
-    # --- DATABASE READ HAPPENS HERE ---
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id, user_id, message, sent_at FROM notifications ORDER BY sent_at DESC")
-    rows = cur.fetchall()
-
-    # Format the data into a list of dictionaries for the frontend
-    results = []
-    for row in rows:
-        results.append({
-            "id": row[0],
-            "user_id": row[1],
-            "message": row[2],
-            "sent_at": row[3]
-        })
-
-    cur.close()
-    conn.close()
-    return results
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, user_id, message, sent_at FROM notifications ORDER BY sent_at DESC")
+        rows = cur.fetchall()
+        
+        results = [{"id": r[0], "user_id": r[1], "message": r[2], "sent_at": r[3]} for r in rows]
+        
+        cur.close()
+        conn.close()
+        return results
+    except psycopg2.Error as e:
+        logger.error("Failed to fetch notifications from DB: %s", e)
+        # Raise an HTTP 500 error so the Frontend knows something is wrong
+        raise HTTPException(status_code=500, detail="Database connection failed")
 
 if __name__ == "__main__":
     rabbit_thread = threading.Thread(target=start_rabbitmq_consumer, daemon=True)
