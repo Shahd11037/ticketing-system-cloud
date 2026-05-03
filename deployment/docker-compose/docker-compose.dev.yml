@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: ticketing_system
     ports:
-      - "5432:5432" #external (host): internal (container)
+      - "5433:5432" #external (host): internal (container)
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../../db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -35,7 +35,36 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
-  
+
+  ticket-service:
+    <<: *default-logging
+    build: ../../services/ticket-service
+    container_name: ticket_service
+    restart: always
+    ports:
+      - "5001:5000"
+    environment:
+      - DB_HOST=db
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - db
+      - rabbitmq
+ 
+  support-service:
+    <<: *default-logging
+    build: ../../services/support-service
+    container_name: support_service
+    restart: always
+    ports:
+      - "5002:5000"
+    environment:
+      - DB_HOST=db
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - db
+      - rabbitmq
+      - ticket-service
+
   notification-service:
     <<: *default-logging
     build: ../../services/notification-service
