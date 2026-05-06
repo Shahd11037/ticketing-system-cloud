@@ -1,0 +1,97 @@
+version: '3.8'
+
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  db:
+    <<: *default-logging
+    image: postgres:15-alpine
+    container_name: ticketing_test_db
+    restart: "no"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: ticketing_test
+    ports:
+      - "5433:5432"  # different host port so it doesn't clash with dev
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ../../db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  rabbitmq:
+    <<: *default-logging
+    image: rabbitmq:3-management
+    container_name: ticketing_test_mq
+    restart: "no"
+    ports:
+      - "5673:5672"
+      - "15673:15672"  # different host port so it doesn't clash with dev
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  ticket-service:
+    <<: *default-logging
+    build: ../../services/ticket-service
+    container_name: ticket_service_test
+    restart: "no"
+    ports:
+      - "6001:5000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=ticketing_test
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - db
+      - rabbitmq
+
+  support-service:
+    <<: *default-logging
+    build: ../../services/support-service
+    container_name: support_service_test
+    restart: "no"
+    ports:
+      - "6002:5000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=ticketing_test
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - db
+      - rabbitmq
+
+  notification-service:
+    <<: *default-logging
+    build: ../../services/notification-service
+    container_name: notification_service_test
+    restart: "no"
+    ports:
+      - "6004:5000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=ticketing_test
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - rabbitmq
+      - db
+
+  reporting-service:
+    <<: *default-logging
+    build: ../../services/reporting-service
+    container_name: reporting_service_test
+    restart: "no"
+    ports:
+      - "6003:5000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=ticketing_test
+    depends_on:
+      - db
+
+volumes:
+  postgres_test_data:
