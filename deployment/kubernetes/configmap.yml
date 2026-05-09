@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ticketing-config
+data:
+  DB_HOST: "db"
+  DB_NAME: "ticketing_system"
+  DB_USER: "admin"
+  DB_PASSWORD: "password123"
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_USER: "guest"
+  RABBITMQ_PASS: "guest"

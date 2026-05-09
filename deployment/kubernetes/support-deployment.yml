@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: support-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: support-service
+  template:
+    metadata:
+      labels:
+        app: support-service
+    spec:
+      containers:
+        - name: support-service
+          image: support-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ticketing-config
+                  key: DB_HOST
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ticketing-config
+                  key: RABBITMQ_HOST
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: support-service
+spec:
+  selector:
+    app: support-service
+  type: NodePort
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30002

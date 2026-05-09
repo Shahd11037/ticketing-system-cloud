@@ -104,5 +104,19 @@ services:
     depends_on:
       - prometheus
 
+
+frontend:
+    <<: *default-logging
+    build: ../../frontend
+    container_name: frontend_dev
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - ticket-service
+      - support-service
+      - notification-service
+      - reporting-service
+
 volumes:
   postgres_data:

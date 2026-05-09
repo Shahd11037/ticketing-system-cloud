@@ -93,5 +93,19 @@ services:
     depends_on:
       - db
 
+
+frontend:
+    <<: *default-logging
+    build: ../../frontend
+    container_name: frontend_test
+    restart: "no"
+    ports:
+      - "3002:80"
+    depends_on:
+      - ticket-service
+      - support-service
+      - notification-service
+      - reporting-service
+
 volumes:
   postgres_test_data:
