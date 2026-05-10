@@ -44,3 +44,9 @@ CREATE TABLE IF NOT EXISTS notifications (
     sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Insert demo users (passwords are just for demo purposes)
+INSERT INTO users (email, password_hash, role) VALUES
+  ('customer@demo.com', 'demo', 'customer'),
+  ('agent@demo.com', 'demo', 'agent'),
+  ('admin@demo.com', 'demo', 'admin')
+ON CONFLICT (email) DO NOTHING;
