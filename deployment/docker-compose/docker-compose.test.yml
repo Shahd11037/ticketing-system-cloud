@@ -18,7 +18,7 @@ services:
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: ticketing_test
     ports:
-      - "5433:5432"  # different host port so it doesn't clash with dev
+      - "5434:5432"
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
       - ../../db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -30,7 +30,7 @@ services:
     restart: "no"
     ports:
       - "5673:5672"
-      - "15673:15672"  # different host port so it doesn't clash with dev
+      - "15673:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -93,8 +93,7 @@ services:
     depends_on:
       - db
 
-
-frontend:
+  frontend:
     <<: *default-logging
     build: ../../frontend
     container_name: frontend_test
