@@ -48,5 +48,6 @@ CREATE TABLE IF NOT EXISTS notifications (
 INSERT INTO users (email, password_hash, role) VALUES
   ('customer@demo.com', 'demo', 'customer'),
   ('agent@demo.com', 'demo', 'agent'),
-  ('admin@demo.com', 'demo', 'admin')
+  ('admin@demo.com', 'demo', 'admin'),
+  ('sh@gmail.com', 'demo', 'customer')
 ON CONFLICT (email) DO NOTHING;

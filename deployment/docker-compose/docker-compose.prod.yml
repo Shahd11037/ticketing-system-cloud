@@ -114,7 +114,7 @@ services:
     depends_on:
       - prometheus
 
-frontend:
+  frontend:
     <<: *default-logging
     build: ../../frontend
     container_name: frontend_prod

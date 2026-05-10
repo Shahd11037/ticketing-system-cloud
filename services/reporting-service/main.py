@@ -1,11 +1,20 @@
 import logging
 import sys
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 import psycopg2
 import uvicorn
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # This allows your React app to talk to the API
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows GET, POST, etc.
+    allow_headers=["*"],  # Allows all headers
+)
 
 #Initialize the instrumentator and "plug it into" your app
 Instrumentator().instrument(app).expose(app) #this is for monitoring
@@ -60,4 +69,6 @@ def get_ticket_summary():
         raise HTTPException(status_code=500, detail="Could not generate report")
 
 if __name__ == "__main__":
+    # ─── 2. MATCH THE PORT ───
+    # Your React App.jsx expects port 5000
     uvicorn.run(app, host="0.0.0.0", port=5000)
